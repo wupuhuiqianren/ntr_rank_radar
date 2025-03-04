@@ -71,35 +71,26 @@
         let objects = [];
         
         function exportLeaderboard() {
-            const leaderboard = document.getElementById("leaderboard");
-    
-            // 临时存储 Canvas 元素及其对应的图像
-            const canvases = leaderboard.querySelectorAll("canvas");
-            const tempImages = [];
-    
-            // 将所有 Canvas 转换为图像
-            canvases.forEach((canvas) => {
-                const img = document.createElement("img");
-                img.src = canvas.toDataURL("image/png"); // 将 Canvas 内容转换为图像数据 URL
-                img.style.width = canvas.style.width;    // 保持尺寸一致
-                img.style.height = canvas.style.height;
-                tempImages.push({ canvas, img });
-                canvas.parentNode.replaceChild(img, canvas); // 替换 Canvas 为图像
-            });
-    
-            // 使用 html2canvas 捕获整个排行榜
-            html2canvas(leaderboard, { backgroundColor: null }).then(canvas => {
-                const link = document.createElement("a");
-                link.href = canvas.toDataURL("image/png"); // 生成图片的下载链接
-                link.download = "排行榜.png";
+            let leaderboard = document.getElementById("leaderboard");
+            if (!leaderboard || leaderboard.children.length === 0) {
+                alert("排行榜为空，无法导出！");
+                return;
+            }
+
+            html2canvas(leaderboard, {
+                scale: 2, // 提高导出图片的清晰度
+                useCORS: true, // 允许加载跨域图片
+                backgroundColor: null // 保持透明背景
+            }).then(canvas => {
+                let link = document.createElement("a");
+                link.href = canvas.toDataURL("image/png"); // 转换为图片格式
+                link.download = "排行榜.png"; // 设置下载的文件名
                 link.click();
-        
-                // 恢复原始的 Canvas 元素
-                tempImages.forEach(({ canvas, img }) => {
-                    img.parentNode.replaceChild(canvas, img);
-                });
+            }).catch(error => {
+                console.error("截图失败:", error);
             });
         }
+
        
 
         function updateValue(sliderNum) {
