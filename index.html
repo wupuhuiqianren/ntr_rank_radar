@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>牛头人作品排行榜</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script> <!-- 截图库 -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: black; color: white; text-align: center; }
         .container { 
@@ -30,19 +30,13 @@
             padding: 5px; 
             border: 1px solid #ddd; 
             border-radius: 5px; 
-            resize: none; /* 禁止手动调整，保持自动扩展 */
-            overflow-y: hidden; /* 隐藏滚动条 */
-            white-space: pre-wrap; /* 允许换行 */
+            resize: none;
+            overflow-y: hidden;
+            white-space: pre-wrap;
             word-wrap: break-word;
         }
         .delete-btn { position: absolute; top: 5px; right: 5px; background-color: red; color: white; border: none; padding: 5px; cursor: pointer; border-radius: 5px; }
         .export-btn { margin-top: 20px; padding: 10px 15px; background-color: #007BFF; color: white; border: none; cursor: pointer; border-radius: 5px; }
-        #myRadarChart {
-    	background: url("https://cdn-fusion.imgcdn.store/i/2025/9c9423237169feca.png");
-    	background-size: cover;
-    	background-position: center;
-        }
-
     </style>
 </head>
 <body>
@@ -67,59 +61,30 @@
     <button class="export-btn" onclick="exportLeaderboard()">导出排行榜为图片</button>
 
     <script>
-        localStorage.clear();
         let objects = [];
-        
-        function exportLeaderboard() {
-            let leaderboard = document.getElementById("leaderboard");
-            if (!leaderboard || leaderboard.children.length === 0) {
-                alert("排行榜为空，无法导出！");
-                return;
+
+        // 获取跨域图片并生成 Blob URL
+        async function fetchImageAsBlobUrl(url) {
+            try {
+                const response = await fetch(url, { mode: 'cors' });
+                if (!response.ok) {
+                    throw new Error('网络请求失败');
+                }
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                return blobUrl;
+            } catch (error) {
+                console.error('获取图片失败:', error);
+                return null; // 失败时返回 null
             }
-
-            // 找到所有 <canvas> 元素并临时存储
-            const canvases = leaderboard.querySelectorAll("canvas");
-            const tempImages = [];
-
-            // 将每个 <canvas> 转换为 <img>
-            canvases.forEach((canvas) => {
-                const img = document.createElement("img");
-                img.src = canvas.toDataURL("image/png"); // 将 canvas 内容转为图片数据 URL
-                img.style.width = canvas.style.width;    // 保持尺寸一致
-                img.style.height = canvas.style.height;
-                tempImages.push({ canvas, img });
-                canvas.parentNode.replaceChild(img, canvas); // 替换 canvas 为 img
-            });
-
-              // 使用 html2canvas 捕获整个排行榜
-            html2canvas(leaderboard, {
-                scale: 2,          // 提高导出图片的清晰度
-                useCORS: true,     // 允许加载跨域图片
-                backgroundColor: null // 保持透明背景
-            }).then(canvas => {
-                let link = document.createElement("a");
-                link.href = canvas.toDataURL("image/png"); // 转换为图片格式
-                link.download = "排行榜.png";              // 设置下载文件名
-                link.click();
-    
-                // 恢复原始的 <canvas> 元素
-                tempImages.forEach(({ canvas, img }) => {
-                    img.parentNode.replaceChild(canvas, img);
-                });
-            }).catch(error => {
-                console.error("截图失败:", error);
-                // 如果失败，也恢复 <canvas>
-                tempImages.forEach(({ canvas, img }) => {
-                    img.parentNode.replaceChild(canvas, img);
-                });
-            });
         }
-       
 
+        // 更新滑动条数值
         function updateValue(sliderNum) {
             document.getElementById("val" + sliderNum).innerText = document.getElementById("slider" + sliderNum).value;
         }
 
+        // 添加作品
         function addObject() {
             let name = document.getElementById("nameInput").value.trim();
             if (!name) { alert("请输入名字！"); return; }
@@ -149,182 +114,212 @@
             reader.readAsDataURL(imageFile);
         }
 
-    function updateLeaderboard() {
-        objects.sort((a, b) => b.totalScore - a.totalScore);
+        // 更新排行榜
+        async function updateLeaderboard() {
+            objects.sort((a, b) => b.totalScore - a.totalScore);
 
-        let leaderboard = document.getElementById("leaderboard");
-        leaderboard.innerHTML = "";
+            let leaderboard = document.getElementById("leaderboard");
+            leaderboard.innerHTML = "";
 
-        objects.forEach((obj, index) => {
-            let container = document.createElement("div");
-            container.classList.add("container");
+            for (let index = 0; index < objects.length; index++) {
+                let obj = objects[index];
+                let container = document.createElement("div");
+                container.classList.add("container");
 
-            // 创建排名标签，并设置样式
-            let rankLabel = document.createElement("div");
-            rankLabel.innerText = (index + 1);
-            rankLabel.style.position = "absolute";
-            rankLabel.style.top = "5px";
-            rankLabel.style.left = "5px";
+                // 创建排名标签
+                let rankLabel = document.createElement("div");
+                rankLabel.innerText = (index + 1);
+                rankLabel.style.position = "absolute";
+                rankLabel.style.top = "5px";
+                rankLabel.style.left = "5px";
 
-            if (index < 3) {
-                // 前三名样式：不同背景颜色、圆角、加大字体
-                if (index === 0) {
-                    rankLabel.style.backgroundColor = "#ffd700"; // 金色
-                } else if (index === 1) {
-                    rankLabel.style.backgroundColor = "#c0c0c0"; // 银色
-                } else if (index === 2) {
-                    rankLabel.style.backgroundColor = "#cd7f32"; // 青铜色
+                if (index < 3) {
+                    if (index === 0) rankLabel.style.backgroundColor = "#ffd700";
+                    else if (index === 1) rankLabel.style.backgroundColor = "#c0c0c0";
+                    else if (index === 2) rankLabel.style.backgroundColor = "#cd7f32";
+                    rankLabel.style.borderRadius = "8px";
+                    rankLabel.style.fontSize = "20px";
+                    rankLabel.style.padding = "5px 10px";
+                    rankLabel.style.color = "#fff";
+                } else {
+                    rankLabel.style.border = "1px solid #000";
+                    rankLabel.style.fontSize = "14px";
+                    rankLabel.style.padding = "3px 7px";
+                    rankLabel.style.backgroundColor = "#fff";
+                    rankLabel.style.color = "#000";
                 }
-                rankLabel.style.borderRadius = "8px";
-                rankLabel.style.fontSize = "20px";
-                rankLabel.style.padding = "5px 10px";
-                rankLabel.style.color = "#fff";
-            } else {
-                // 其他作品：普通样式
-                rankLabel.style.border = "1px solid #000";
-                rankLabel.style.fontSize = "14px";
-                rankLabel.style.padding = "3px 7px";
-                rankLabel.style.backgroundColor = "#fff";
-                rankLabel.style.color = "#000";
-            }
-            container.appendChild(rankLabel);
+                container.appendChild(rankLabel);
 
-            let leftSection = document.createElement("div");
+                let leftSection = document.createElement("div");
 
-            let name = document.createElement("h3");
-            name.innerText = obj.name;
+                let name = document.createElement("h3");
+                name.innerText = obj.name;
 
-            let image = document.createElement("img");
-            image.src = obj.imageUrl;
-            image.style.width = "250px";
+                let image = document.createElement("img");
+                image.src = obj.imageUrl;
+                image.style.width = "250px";
 
-            let commentInput = document.createElement("textarea");
-            commentInput.classList.add("comment-input");
-            commentInput.value = obj.comment;
-            commentInput.rows = 1;
-            commentInput.style.height = "auto";
-            commentInput.style.height = commentInput.scrollHeight + "px";
-
-            commentInput.oninput = function () {
-                this.style.height = "auto";
-                this.style.height = this.scrollHeight + "px";
-                objects[index].comment = commentInput.value;
-            };
-
-            setTimeout(() => {
+                let commentInput = document.createElement("textarea");
+                commentInput.classList.add("comment-input");
+                commentInput.value = obj.comment;
+                commentInput.rows = 1;
                 commentInput.style.height = "auto";
                 commentInput.style.height = commentInput.scrollHeight + "px";
-            }, 0);
 
-            let deleteBtn = document.createElement("button");
-            deleteBtn.classList.add("delete-btn");
-            deleteBtn.innerText = "删除";
-            deleteBtn.onclick = function () { objects.splice(index, 1); updateLeaderboard(); localStorage.setItem("leaderboardData", JSON.stringify(objects));};
+                commentInput.oninput = function () {
+                    this.style.height = "auto";
+                    this.style.height = this.scrollHeight + "px";
+                    objects[index].comment = commentInput.value;
+                };
 
-            let chartCanvas = document.createElement("canvas");
-            chartCanvas.classList.add("chart-container");
-            chartCanvas.id = "chart" + index;
+                setTimeout(() => {
+                    commentInput.style.height = "auto";
+                    commentInput.style.height = commentInput.scrollHeight + "px";
+                }, 0);
 
-            leftSection.appendChild(name);
-            leftSection.appendChild(image);
-            leftSection.appendChild(commentInput);
+                let deleteBtn = document.createElement("button");
+                deleteBtn.classList.add("delete-btn");
+                deleteBtn.innerText = "删除";
+                deleteBtn.onclick = function () { 
+                    objects.splice(index, 1); 
+                    updateLeaderboard(); 
+                };
 
-            container.appendChild(leftSection);
-            container.appendChild(chartCanvas);
-            container.appendChild(deleteBtn);
-            leaderboard.appendChild(container);
+                let chartCanvas = document.createElement("canvas");
+                chartCanvas.classList.add("chart-container");
+                chartCanvas.id = "chart" + index;
 
-            createRadarChart(chartCanvas.id, obj.params);
-        });
-    }
+                leftSection.appendChild(name);
+                leftSection.appendChild(image);
+                leftSection.appendChild(commentInput);
 
-        function createRadarChart(canvasId, data) {
-    	const ctx = document.getElementById(canvasId).getContext("2d");
+                container.appendChild(leftSection);
+                container.appendChild(chartCanvas);
+                container.appendChild(deleteBtn);
+                leaderboard.appendChild(container);
 
-    	const backgroundImage = new Image();
-    	backgroundImage.src = "https://cdn-fusion.imgcdn.store/i/2025/272e747f4a019d26.png"; // 你的背景图片
+                // 生成雷达图
+                await createRadarChart(chartCanvas.id, obj.params);
+            }
+        }
 
-    	backgroundImage.onload = function() {
-       	 const chart = new Chart(ctx, {
-           	 type: "radar",
-            	 data: {
-                	labels: ["剧情", "实用", "交互", "虐心", "隐奸"],
-                	datasets: [{
-                    		label: "评分",
-                    		data: data,
-                    		backgroundColor: "rgba(54, 162, 235, 0.2)", // 半透明填充
-                    		borderColor: "rgba(54, 162, 235, 1)",
-                    		borderWidth: 2,
-                    		pointBackgroundColor: "blue",
-                    		pointBorderColor: "white",
-                   		pointRadius: 4,
-                    		pointHoverRadius: 6,
-                    		pointHoverBackgroundColor: "rgba(255, 99, 132, 1,0.5)",
-                    		pointHoverBorderColor: "white",
-                    		pointHoverBorderWidth: 2
-                	}]
-            	},
-                options: {
-                    responsive: false,
-                    scales: {
-                        r: {
-                            min: 0,
-                            max: 10,
-                            angleLines: { color: "rgba(255, 255, 255, 0.5)" },
-                            grid: { color: "rgba(200, 15, 15, 0.8)", lineWidth: 1.5 },
-                            pointLabels: { color: "#fff", font: { size: 14, weight: "bold" }},
-                            ticks: { color: "#fff", backdropColor: "rgba(0,0,0,0.3)", font: { size: 12 }, z: 10 }
+        // 生成雷达图
+        async function createRadarChart(canvasId, data) {
+            const ctx = document.getElementById(canvasId).getContext("2d");
+
+            // 替换为你的跨域图片 URL
+            const imageUrl = "https://cdn-fusion.imgcdn.store/i/2025/272e747f4a019d26.png";
+            const blobUrl = await fetchImageAsBlobUrl(imageUrl);
+            if (!blobUrl) {
+                console.error("无法加载背景图片，使用默认背景");
+            }
+
+            const backgroundImage = new Image();
+            backgroundImage.src = blobUrl || "";
+
+            backgroundImage.onload = function() {
+                const chart = new Chart(ctx, {
+                    type: "radar",
+                    data: {
+                        labels: ["剧情", "实用", "交互", "虐心", "隐奸"],
+                        datasets: [{
+                            label: "评分",
+                            data: data,
+                            backgroundColor: "rgba(54, 162, 235, 0.2)",
+                            borderColor: "rgba(54, 162, 235, 1)",
+                            borderWidth: 2,
+                            pointBackgroundColor: "blue",
+                            pointBorderColor: "white",
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: false,
+                        scales: {
+                            r: {
+                                min: 0,
+                                max: 10,
+                                angleLines: { color: "rgba(255, 255, 255, 0.5)" },
+                                grid: { color: "rgba(200, 15, 15, 0.8)", lineWidth: 1.5 },
+                                pointLabels: { color: "#fff", font: { size: 14, weight: "bold" } },
+                                ticks: { color: "#fff", backdropColor: "rgba(0,0,0,0.3)", font: { size: 12 } }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: true }
                         }
                     },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            enabled: true,
-                            backgroundColor: "rgba(0,0,0,0.7)",
-                            titleFont: { size: 14, weight: "bold" },
-                            bodyFont: { size: 12 },
-                            padding: 10,
-                            cornerRadius: 8
+                    plugins: [{
+                        id: 'customBackground',
+                        beforeDraw: (chart) => {
+                            if (backgroundImage.complete) {
+                                const ctx = chart.ctx;
+                                const { width, height } = chart.canvas;
+                                const imgWidth = backgroundImage.width;
+                                const imgHeight = backgroundImage.height;
+
+                                const scale = Math.max(width / imgWidth, height / imgHeight);
+                                const newWidth = imgWidth * scale;
+                                const newHeight = imgHeight * scale;
+                                const offsetX = (newWidth - width) / 2;
+                                const offsetY = (newHeight - height) / 2;
+
+                                ctx.drawImage(
+                                    backgroundImage,
+                                    0, 0, imgWidth, imgHeight,
+                                    -offsetX, -offsetY, newWidth, newHeight
+                                );
+                            }
                         }
-                    },
-                    animation: {
-                        duration: 1000,
-                        easing: "easeInOutBounce"
-                    },
-                    backgroundImage: backgroundImage // 这个属性本身不会生效，我们需要手动绘制
-                },
-                plugins: [{
-                    id: 'customBackground',
-                    beforeDraw: (chart) => {
-                        if (backgroundImage.complete) {
-        		        const ctx = chart.ctx;
-        		        const { width, height } = chart.canvas;
-        		        const imgWidth = backgroundImage.width;
-        		        const imgHeight = backgroundImage.height;
+                    }]
+                });
+            };
+        }
 
-        		        // 计算缩放比例，保证背景图填满 canvas 而不留空白
-        		       const scale = Math.max(width / imgWidth, height / imgHeight);
-        		       const newWidth = imgWidth * scale;
-       		       const newHeight = imgHeight * scale;
+        // 导出排行榜为图片
+        async function exportLeaderboard() {
+            const leaderboard = document.getElementById("leaderboard");
+            if (!leaderboard || leaderboard.children.length === 0) {
+                alert("排行榜为空，无法导出！");
+                return;
+            }
 
-      		       // 计算裁剪起点，使背景图居中
-       		       const offsetX = (newWidth - width) / 2;
-      		       const offsetY = (newHeight - height) / 2;
+            // 找到所有 Canvas 并临时转为图片
+            const canvases = leaderboard.querySelectorAll("canvas");
+            const tempImages = [];
 
-      		       // 先缩放再裁剪，使图片完整覆盖 canvas
-      		       ctx.drawImage(
-          		           backgroundImage, 
-     		           0, 0, imgWidth, imgHeight, // 原图区域
-        		           -offsetX, -offsetY, newWidth, newHeight // 目标绘制区域
-        		       );
-                        }
-                    }
-                }]
+            for (const canvas of canvases) {
+                const img = document.createElement("img");
+                img.src = canvas.toDataURL("image/png");
+                img.style.width = canvas.style.width;
+                img.style.height = canvas.style.height;
+                tempImages.push({ canvas, img });
+                canvas.parentNode.replaceChild(img, canvas);
+            }
+
+            // 使用 html2canvas 导出
+            html2canvas(leaderboard, {
+                scale: 2,          // 提高清晰度
+                useCORS: true,     // 尝试加载跨域资源
+                backgroundColor: null // 透明背景
+            }).then(canvas => {
+                const link = document.createElement("a");
+                link.href = canvas.toDataURL("image/png");
+                link.download = "排行榜.png";
+                link.click();
+
+                // 恢复 Canvas
+                tempImages.forEach(({ canvas, img }) => {
+                    img.parentNode.replaceChild(canvas, img);
+                });
+            }).catch(error => {
+                console.error("导出失败:", error);
+                tempImages.forEach(({ canvas, img }) => {
+                    img.parentNode.replaceChild(canvas, img);
+                });
             });
-        };
-    }
-
-
+        }
     </script>
 
 </body>
