@@ -77,20 +77,43 @@
                 return;
             }
 
+            // 找到所有 <canvas> 元素并临时存储
+            const canvases = leaderboard.querySelectorAll("canvas");
+            const tempImages = [];
+
+            // 将每个 <canvas> 转换为 <img>
+            canvases.forEach((canvas) => {
+                const img = document.createElement("img");
+                img.src = canvas.toDataURL("image/png"); // 将 canvas 内容转为图片数据 URL
+                img.style.width = canvas.style.width;    // 保持尺寸一致
+                img.style.height = canvas.style.height;
+                tempImages.push({ canvas, img });
+                canvas.parentNode.replaceChild(img, canvas); // 替换 canvas 为 img
+            });
+
+              // 使用 html2canvas 捕获整个排行榜
             html2canvas(leaderboard, {
-                scale: 2, // 提高导出图片的清晰度
-                useCORS: true, // 允许加载跨域图片
+                scale: 2,          // 提高导出图片的清晰度
+                useCORS: true,     // 允许加载跨域图片
                 backgroundColor: null // 保持透明背景
             }).then(canvas => {
                 let link = document.createElement("a");
                 link.href = canvas.toDataURL("image/png"); // 转换为图片格式
-                link.download = "排行榜.png"; // 设置下载的文件名
+                link.download = "排行榜.png";              // 设置下载文件名
                 link.click();
+    
+                // 恢复原始的 <canvas> 元素
+                tempImages.forEach(({ canvas, img }) => {
+                    img.parentNode.replaceChild(canvas, img);
+                });
             }).catch(error => {
                 console.error("截图失败:", error);
+                // 如果失败，也恢复 <canvas>
+                tempImages.forEach(({ canvas, img }) => {
+                    img.parentNode.replaceChild(canvas, img);
+                });
             });
         }
-
        
 
         function updateValue(sliderNum) {
